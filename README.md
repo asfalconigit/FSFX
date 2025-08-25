@@ -5,7 +5,7 @@ This workspace contains two folders:
 - backend: Spring Boot application (port 8080)
 - frontend: Vite + React (dev server default: 5173)
 
-How to run
+How to run / Falconi
 
 1) Backend (requires JDK 17 and Maven):
 
