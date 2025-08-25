@@ -1,0 +1,1601 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Protótipo - Portal do Estipulante</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .sidebar {
+            transition: width 0.3s ease-in-out;
+        }
+        .main-content {
+            transition: margin-left 0.3s ease-in-out;
+        }
+        .page {
+            display: none;
+        }
+        .page.active {
+            display: block;
+        }
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.6);
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        .modal-content {
+            background-color: white;
+            padding: 2rem;
+            border-radius: 0.5rem;
+            max-width: 500px;
+            width: 90%;
+        }
+        .modal-content.modal-lg {
+            max-width: 800px;
+        }
+        
+        /* Sidebar Collapsed Styles */
+        .sidebar.collapsed {
+            width: 5rem; /* 80px */
+        }
+        .sidebar.collapsed .nav-text,
+        .sidebar.collapsed .logo-text,
+        .sidebar.collapsed .fa-chevron-down {
+            display: none;
+        }
+        .sidebar.collapsed .nav-link,
+        .sidebar.collapsed .submenu-link {
+            justify-content: center;
+        }
+        .sidebar.collapsed .submenu {
+            display: block !important;
+            padding-left: 0;
+        }
+         .sidebar.collapsed .submenu-link i,
+         .sidebar.collapsed .nav-link i {
+            margin-right: 0;
+        }
+        .main-content.collapsed {
+            margin-left: 5rem; /* 80px */
+        }
+        
+        /* Tooltip Styles */
+        .nav-link .tooltip, .submenu-link .tooltip {
+            visibility: hidden;
+            opacity: 0;
+            width: max-content;
+            background-color: #1f2937;
+            color: #fff;
+            text-align: center;
+            border-radius: 6px;
+            padding: 5px 10px;
+            position: absolute;
+            z-index: 10;
+            left: 5.5rem; /* 88px */
+            transition: opacity 0.2s;
+        }
+        .sidebar.collapsed .nav-link:hover .tooltip,
+        .sidebar.collapsed .submenu-link:hover .tooltip {
+            visibility: visible;
+            opacity: 1;
+        }
+        
+        #favorite-btn {
+            color: #d1d5db; /* gray-300 */
+        }
+        #favorite-btn.favorited {
+            color: #f59e0b; /* amber-500 */
+        }
+        
+        .sortable {
+            cursor: pointer;
+        }
+        .sortable:hover {
+            background-color: #e5e7eb;
+        }
+        
+        /* Custom Scrollbar */
+        #main-nav {
+            overflow-x: hidden;
+            scrollbar-width: thin;
+            scrollbar-color: #4b5563 #1f2937;
+        }
+        #main-nav::-webkit-scrollbar {
+            width: 8px;
+        }
+        #main-nav::-webkit-scrollbar-track {
+            background: #1f2937;
+        }
+        #main-nav::-webkit-scrollbar-thumb {
+            background-color: #4b5563;
+            border-radius: 10px;
+            border: 2px solid #1f2937;
+        }
+         #main-nav::-webkit-scrollbar-thumb:hover {
+            background-color: #6b7280;
+        }
+
+    </style>
+</head>
+<body class="bg-gray-100">
+
+    <!-- Estrutura Principal -->
+    <div id="app-container" class="hidden">
+        <!-- Banner de Admin -->
+        <div id="admin-banner" class="hidden bg-yellow-400 text-yellow-900 text-center p-2 font-semibold flex justify-center items-center gap-4">
+            <p>
+                <i class="fas fa-user-shield mr-2"></i>
+                Modo Administrador: A visualizar como <span id="impersonated-cnpj" class="font-bold"></span>
+            </p>
+        </div>
+
+        <!-- Sidebar -->
+        <aside id="sidebar" class="sidebar bg-slate-800 text-white w-64 h-screen p-4 fixed flex flex-col">
+            <div class="flex-shrink-0">
+                <div class="flex items-center justify-between mb-8 h-8">
+                    <div class="flex items-center">
+                        <img src="https://placehold.co/40x40/ffffff/1e293b?text=FSFX" alt="Logo FSFX" class="rounded-full mr-3 flex-shrink-0">
+                        <h1 class="text-xl font-bold logo-text">Portal</h1>
+                    </div>
+                    <button id="collapse-btn" class="p-2 rounded-lg hover:bg-slate-700">
+                        <i id="collapse-icon" class="fas fa-chevron-left"></i>
+                    </button>
+                </div>
+            </div>
+            <nav id="main-nav" class="flex-grow overflow-y-auto">
+                <ul>
+                    <li class="mb-2"><a href="#dashboard" class="nav-link flex items-center p-2 rounded-lg hover:bg-slate-700 relative" data-icon="fa-home"><i class="fas fa-home w-6 mr-2 text-center"></i><span class="nav-text">Página Inicial</span><span class="tooltip">Página Inicial</span></a></li>
+                    <li class="mb-2">
+                        <a href="#" class="nav-link flex items-center p-2 rounded-lg hover:bg-slate-700 accordion-toggle relative" data-icon="fa-users"><i class="fas fa-users w-6 mr-2 text-center"></i><span class="nav-text">Beneficiário</span><i class="fas fa-chevron-down ml-auto"></i><span class="tooltip">Beneficiário</span></a>
+                        <ul class="submenu pl-8 mt-1 hidden">
+                            <li><a href="#beneficiarios-inclusao" class="submenu-link nav-link flex items-center p-2 rounded-lg hover:bg-slate-600 relative" data-icon="fa-user-plus"><i class="fas fa-user-plus w-6 mr-2 text-center"></i><span class="nav-text">Incluir Beneficiário</span><span class="tooltip">Incluir Beneficiário</span></a></li>
+                            <li><a href="#beneficiarios-consulta" class="submenu-link nav-link flex items-center p-2 rounded-lg hover:bg-slate-600 relative" data-icon="fa-user-pen"><i class="fas fa-user-pen w-6 mr-2 text-center"></i><span class="nav-text">Manutenção</span><span class="tooltip">Manutenção</span></a></li>
+                            <li><a href="#beneficiarios-lote" class="submenu-link nav-link flex items-center p-2 rounded-lg hover:bg-slate-600 relative" data-icon="fa-users-line"><i class="fas fa-users-line w-6 mr-2 text-center"></i><span class="nav-text">Movimentação por Lote</span><span class="tooltip">Movimentação por Lote</span></a></li>
+                        </ul>
+                    </li>
+                    <li class="mb-2">
+                        <a href="#" class="nav-link flex items-center p-2 rounded-lg hover:bg-slate-700 accordion-toggle relative" data-icon="fa-search"><i class="fas fa-search w-6 mr-2 text-center"></i><span class="nav-text">Consultas</span><i class="fas fa-chevron-down ml-auto"></i><span class="tooltip">Consultas</span></a>
+                         <ul class="submenu pl-8 mt-1 hidden">
+                            <li><a href="#consultas-carteiras" class="submenu-link nav-link flex items-center p-2 rounded-lg hover:bg-slate-600 relative" data-icon="fa-id-card"><i class="fas fa-id-card w-6 mr-2 text-center"></i><span class="nav-text">Solicitação de Carteiras</span><span class="tooltip">Solicitação de Carteiras</span></a></li>
+                            <li><a href="#consultas-rescisao" class="submenu-link nav-link flex items-center p-2 rounded-lg hover:bg-slate-600 relative" data-icon="fa-file-circle-xmark"><i class="fas fa-file-circle-xmark w-6 mr-2 text-center"></i><span class="nav-text">Solicitação de Rescisão</span><span class="tooltip">Solicitação de Rescisão</span></a></li>
+                        </ul>
+                    </li>
+                    <li class="mb-2">
+                        <a href="#" class="nav-link flex items-center p-2 rounded-lg hover:bg-slate-700 accordion-toggle relative" data-icon="fa-file-invoice-dollar"><i class="fas fa-file-invoice-dollar w-6 mr-2 text-center"></i><span class="nav-text">Mensalidade</span><i class="fas fa-chevron-down ml-auto"></i><span class="tooltip">Mensalidade</span></a>
+                         <ul class="submenu pl-8 mt-1 hidden">
+                            <li><a href="#mensalidade-demonstrativo" class="submenu-link nav-link flex items-center p-2 rounded-lg hover:bg-slate-600 relative" data-icon="fa-barcode"><i class="fas fa-barcode w-6 mr-2 text-center"></i><span class="nav-text">Demonstrativo/Boletos</span><span class="tooltip">Demonstrativo/Boletos</span></a></li>
+                            <li><a href="#mensalidade-detalhamento" class="submenu-link nav-link flex items-center p-2 rounded-lg hover:bg-slate-600 relative" data-icon="fa-search-dollar"><i class="fas fa-search-dollar w-6 mr-2 text-center"></i><span class="nav-text">Detalhamento</span><span class="tooltip">Detalhamento</span></a></li>
+                        </ul>
+                    </li>
+                    <li class="mb-2"><a href="#relatorios" class="nav-link flex items-center p-2 rounded-lg hover:bg-slate-700 relative" data-icon="fa-chart-bar"><i class="fas fa-chart-bar w-6 mr-2 text-center"></i><span class="nav-text">Relatórios</span><span class="tooltip">Relatórios</span></a></li>
+                </ul>
+            </nav>
+            <div class="flex-shrink-0 pt-4">
+                 <a href="#login" id="logout-button" class="nav-link flex items-center p-2 rounded-lg hover:bg-red-500 relative"><i class="fas fa-sign-out-alt w-6 mr-2 text-center"></i><span class="nav-text">Sair</span><span class="tooltip">Sair</span></a>
+            </div>
+        </aside>
+
+        <!-- Conteúdo Principal -->
+        <main id="main-content" class="main-content ml-64 p-8">
+            <!-- Header -->
+            <header class="flex justify-between items-center mb-8">
+                <div>
+                    <div class="flex items-center gap-3">
+                        <h2 id="page-title" class="text-3xl font-bold text-gray-800">Página Inicial</h2>
+                        <button id="favorite-btn" title="Favoritar esta página" class="text-2xl hover:opacity-75 transition-colors">
+                            <i class="fa-regular fa-star"></i>
+                        </button>
+                    </div>
+                    <div class="flex items-center gap-3 mt-1">
+                        <p class="text-gray-500">Contrato: <span class="font-semibold" id="header-contrato">495644 - Produto Médico</span></p>
+                        <button id="switch-contract-button" class="text-lg text-blue-600 hover:text-blue-800 transition-colors" title="Trocar Contrato">
+                            <i class="fas fa-exchange-alt"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="flex items-center">
+                    <div id="company-info" class="text-right mr-4">
+                        <p class="font-semibold text-gray-700">Empresa Exemplo LTDA</p>
+                        <p class="text-sm text-gray-500" id="header-cnpj-display">CNPJ: 12.345.678/0001-99</p>
+                        <button id="change-cnpj-btn" class="hidden text-sm text-blue-600 hover:underline">Trocar CNPJ</button>
+                    </div>
+                    <img src="https://placehold.co/50x50/e2e8f0/4a5568?text=E" alt="Avatar" class="rounded-full">
+                </div>
+            </header>
+
+            <!-- Páginas de Conteúdo -->
+            <div id="page-dashboard" class="page">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div class="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow">
+                        <h3 class="text-lg font-semibold text-gray-700">Beneficiários Ativos</h3>
+                        <p class="text-3xl font-bold text-blue-600">1.254</p>
+                    </div>
+                     <div class="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow">
+                        <h3 class="text-lg font-semibold text-gray-700">Solicitações Pendentes</h3>
+                        <p class="text-3xl font-bold text-yellow-500">12</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow">
+                        <h3 class="text-lg font-semibold text-gray-700">Fatura Atual</h3>
+                        <p class="text-3xl font-bold text-green-600">R$ 152.480,50</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow">
+                        <h3 class="text-lg font-semibold text-gray-700">Sinistralidade</h3>
+                        <p class="text-3xl font-bold text-red-500">78%</p>
+                    </div>
+                </div>
+                <div class="mt-8 bg-white p-6 rounded-lg shadow-md">
+                    <h3 class="text-xl font-semibold mb-4">Acesso Rápido</h3>
+                    <div id="quick-access-container" class="flex flex-wrap gap-4">
+                        <!-- Acesso rápido dinâmico -->
+                    </div>
+                </div>
+            </div>
+
+            <div id="page-beneficiarios-consulta" class="page">
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-4 items-end">
+                        <div class="lg:col-span-2">
+                            <label for="filter-name" class="block text-sm font-medium text-gray-700">Nome</label>
+                            <input type="text" id="filter-name" placeholder="Nome ou Matrícula" class="mt-1 p-2 w-full border rounded-lg">
+                        </div>
+                         <div>
+                            <label for="filter-product" class="block text-sm font-medium text-gray-700">Produto</label>
+                            <select id="filter-product" class="mt-1 p-2 w-full border rounded-lg"></select>
+                        </div>
+                        <div>
+                            <label for="filter-status" class="block text-sm font-medium text-gray-700">Status</label>
+                            <select id="filter-status" class="mt-1 p-2 w-full border rounded-lg">
+                                <option value="">Todos</option>
+                                <option value="Ativo">Ativo</option>
+                                <option value="Inativo">Inativo</option>
+                                <option value="Pendente">Pendente</option>
+                            </select>
+                        </div>
+                        <div class="flex gap-2">
+                            <button id="filter-consultar-btn" class="bg-blue-500 text-white p-2 rounded-lg hover:bg-blue-600 w-full">Consultar</button>
+                            <button id="filter-limpar-btn" class="bg-gray-300 text-gray-800 p-2 rounded-lg hover:bg-gray-400 w-full">Limpar</button>
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left">
+                            <thead id="beneficiaries-table-header" class="bg-gray-200">
+                                <tr>
+                                    <th class="p-3 sortable" data-sort="name">Beneficiário <span class="sort-icon"></span></th>
+                                    <th class="p-3 sortable" data-sort="card">Carteira <span class="sort-icon"></span></th>
+                                    <th class="p-3 sortable" data-sort="product">Produto <span class="sort-icon"></span></th>
+                                    <th class="p-3 sortable" data-sort="type">Tipo <span class="sort-icon"></span></th>
+                                    <th class="p-3 sortable" data-sort="status">Situação <span class="sort-icon"></span></th>
+                                    <th class="p-3 sortable" data-sort="titular">Titular <span class="sort-icon"></span></th>
+                                    <th class="p-3">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="beneficiaries-table-body">
+                                <!-- Linhas da tabela serão injetadas aqui -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="page-beneficiarios-inclusao" class="page">
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <form id="inclusion-form" class="space-y-6">
+                        <!-- Dados do Titular -->
+                        <div>
+                            <h4 class="font-semibold text-gray-700 border-b pb-2 mb-4">Dados do Titular</h4>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <input type="text" id="inclusion-name" placeholder="Nome Completo" class="p-2 border rounded-lg col-span-2" required>
+                                <input type="date" placeholder="Data de Nascimento" class="p-2 border rounded-lg">
+                                <input type="text" placeholder="CPF" class="p-2 border rounded-lg">
+                                <input type="text" placeholder="Nome da Mãe" class="p-2 border rounded-lg col-span-2">
+                            </div>
+                        </div>
+
+                        <!-- Seção de Dependentes -->
+                        <div id="dependents-section">
+                            <div class="flex justify-between items-center border-b pb-2 mb-4">
+                                <h4 class="font-semibold text-gray-700">Dependentes</h4>
+                                <button id="add-dependent-btn" type="button" class="bg-green-500 text-white px-3 py-1 rounded-lg text-sm hover:bg-green-600 flex items-center"><i class="fas fa-plus mr-2"></i>Adicionar Dependente</button>
+                            </div>
+                            <div id="dependents-container" class="space-y-4">
+                                <!-- Formulários de dependentes serão injetados aqui -->
+                            </div>
+                        </div>
+
+                        <!-- Produtos -->
+                        <div>
+                            <h4 class="font-semibold text-gray-700 border-b pb-2 mb-4">Produtos</h4>
+                            <p class="text-sm text-gray-500 mb-2">Selecione os produtos para o titular e todos os dependentes. A seleção do produto do contrato atual é obrigatória.</p>
+                            <div id="product-selection-container" class="space-y-4">
+                                <!-- Combos de produtos serão injetados aqui -->
+                            </div>
+                        </div>
+
+                        <!-- Anexos -->
+                        <div>
+                            <h4 class="font-semibold text-gray-700 border-b pb-2 mb-4">Anexos Obrigatórios</h4>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Declaração de Saúde</label>
+                                    <input type="file" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"/>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Documento Pessoal (RG/CPF)</label>
+                                    <input type="file" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"/>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex justify-end gap-4">
+                            <button type="button" class="bg-gray-300 text-gray-800 px-6 py-2 rounded-lg hover:bg-gray-400">Cancelar</button>
+                            <button type="submit" class="bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600">Enviar Solicitação</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <div id="page-beneficiarios-edicao" class="page">
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <div class="space-y-6">
+                        <!-- Dados do Titular -->
+                        <div>
+                            <h4 class="font-semibold text-gray-700 border-b pb-2 mb-4">Dados do Titular</h4>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <input type="text" id="edit-name" placeholder="Nome Completo" class="p-2 border rounded-lg col-span-2">
+                                <input type="date" placeholder="Data de Nascimento" class="p-2 border rounded-lg">
+                                <input type="text" id="edit-cpf" placeholder="CPF" class="p-2 border rounded-lg">
+                                <input type="text" placeholder="Nome da Mãe" class="p-2 border rounded-lg col-span-2">
+                            </div>
+                        </div>
+                        
+                        <!-- Anexos -->
+                        <div>
+                            <h4 class="font-semibold text-gray-700 border-b pb-2 mb-4">Anexos (Opcional para alteração)</h4>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Documento Comprobatório</label>
+                                    <input type="file" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"/>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex justify-end gap-4">
+                            <a href="#beneficiarios-consulta" class="nav-link bg-gray-300 text-gray-800 px-6 py-2 rounded-lg hover:bg-gray-400">Cancelar</a>
+                            <button id="save-changes-btn" class="bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600">Salvar Alterações</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="page-beneficiarios-lote" class="page">
+                 <div class="bg-white p-6 rounded-lg shadow-md">
+                    <div class="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center mb-8">
+                        <i class="fas fa-file-excel text-5xl text-green-500 mb-4"></i>
+                        <p class="mb-4">Arraste e solte a planilha de carga (.xlsx) ou clique para selecionar.</p>
+                        <button class="bg-green-500 text-white px-6 py-2 rounded-lg hover:bg-green-600">Selecionar Arquivo</button>
+                        <p class="text-sm text-gray-500 mt-4">A planilha deve seguir o modelo padrão. <a href="#" class="text-blue-500 hover:underline">Baixar modelo</a>.</p>
+                    </div>
+
+                    <h4 class="text-lg font-semibold text-gray-700 border-b pb-2 mb-4">Histórico de Importações</h4>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left">
+                            <thead id="lote-history-header" class="bg-gray-200">
+                                <tr>
+                                    <th class="p-3 sortable" data-sort="file">Arquivo <span class="sort-icon"></span></th>
+                                    <th class="p-3 sortable" data-sort="importDate">Data da Importação <span class="sort-icon"></span></th>
+                                    <th class="p-3 sortable" data-sort="status">Status <span class="sort-icon"></span></th>
+                                    <th class="p-3 sortable" data-sort="statusDate">Data Alteração do Status <span class="sort-icon"></span></th>
+                                    <th class="p-3">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="lote-history-body">
+                                <!-- Histórico de lotes será injetado aqui -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div id="page-mensalidade-demonstrativo" class="page">
+                 <div class="bg-white p-6 rounded-lg shadow-md">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left">
+                            <thead id="demonstrativo-header" class="bg-gray-200">
+                                <tr>
+                                    <th class="p-3 sortable" data-sort="competencia">Competência <span class="sort-icon"></span></th>
+                                    <th class="p-3 sortable" data-sort="vencimento">Vencimento <span class="sort-icon"></span></th>
+                                    <th class="p-3 sortable" data-sort="valor">Valor Total <span class="sort-icon"></span></th>
+                                    <th class="p-3 sortable" data-sort="status">Status <span class="sort-icon"></span></th>
+                                    <th class="p-3">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="demonstrativo-body">
+                                <!-- Linhas da tabela serão injetadas aqui -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="page-mensalidade-detalhamento" class="page">
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h3 class="text-xl font-semibold">Detalhamento da Fatura - Julho/2025</h3>
+                    <p class="mb-4 text-gray-600">Total: R$ 152.480,50</p>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left">
+                            <thead class="bg-gray-200">
+                                <tr>
+                                    <th class="p-3">Beneficiário</th>
+                                    <th class="p-3">Mensalidade</th>
+                                    <th class="p-3">Coparticipação</th>
+                                    <th class="p-3">Outros</th>
+                                    <th class="p-3">Subtotal</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr class="border-b">
+                                    <td class="p-3">Ademar Gonçalves de Castro</td>
+                                    <td class="p-3">R$ 120,00</td>
+                                    <td class="p-3">R$ 35,50</td>
+                                    <td class="p-3">R$ 0,00</td>
+                                    <td class="p-3 font-semibold">R$ 155,50</td>
+                                </tr>
+                                <tr class="border-b">
+                                    <td class="p-3">Adriana Sorranto Vieira Silva</td>
+                                    <td class="p-3">R$ 120,00</td>
+                                    <td class="p-3">R$ 0,00</td>
+                                    <td class="p-3">R$ 0,00</td>
+                                    <td class="p-3 font-semibold">R$ 120,00</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div id="page-relatorios" class="page">
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <div class="space-y-4">
+                        <div class="border p-4 rounded-lg flex justify-between items-center">
+                            <div>
+                                <h4 class="font-semibold">Detalhamento de Mensalidades</h4>
+                                <p class="text-sm text-gray-600">Relatório detalhado com valores por beneficiário.</p>
+                            </div>
+                            <div class="flex gap-2">
+                                <button class="bg-green-600 text-white px-3 py-1 rounded-lg text-sm hover:bg-green-700"><i class="fas fa-file-excel mr-1"></i> Excel</button>
+                                <button class="bg-red-600 text-white px-3 py-1 rounded-lg text-sm hover:bg-red-700"><i class="fas fa-file-pdf mr-1"></i> PDF</button>
+                                <button class="bg-gray-600 text-white px-3 py-1 rounded-lg text-sm hover:bg-gray-700"><i class="fas fa-file-alt mr-1"></i> TXT</button>
+                            </div>
+                        </div>
+                        <div class="border p-4 rounded-lg flex justify-between items-center">
+                            <div>
+                                <h4 class="font-semibold">Relatório de Sinistralidade</h4>
+                                <p class="text-sm text-gray-600">Análise de utilização do plano pelo contrato.</p>
+                            </div>
+                             <div class="flex gap-2">
+                                <button class="bg-green-600 text-white px-3 py-1 rounded-lg text-sm hover:bg-green-700"><i class="fas fa-file-excel mr-1"></i> Excel</button>
+                                <button class="bg-red-600 text-white px-3 py-1 rounded-lg text-sm hover:bg-red-700"><i class="fas fa-file-pdf mr-1"></i> PDF</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+             <div id="page-consultas-carteiras" class="page">
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left">
+                            <thead class="bg-gray-200">
+                                <tr>
+                                    <th class="p-3">Beneficiário</th>
+                                    <th class="p-3">Carteira</th>
+                                    <th class="p-3">Status</th>
+                                    <th class="p-3">Data Envio</th>
+                                    <th class="p-3">Situação</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr class="border-b">
+                                    <td class="p-3">Ademar Gonçalves de Castro</td>
+                                    <td class="p-3">U9731511352A00RE</td>
+                                    <td class="p-3">Encaminhado ao beneficiário/empresa</td>
+                                    <td class="p-3">07/10/2022</td>
+                                    <td class="p-3">Definitivo</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div id="page-consultas-rescisao" class="page">
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left">
+                            <thead class="bg-gray-200">
+                                <tr>
+                                    <th class="p-3">Solicitação</th>
+                                    <th class="p-3">Beneficiário</th>
+                                    <th class="p-3">Data Solicitação</th>
+                                    <th class="p-3">Data Rescisão</th>
+                                    <th class="p-3">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr class="border-b">
+                                    <td class="p-3">248520</td>
+                                    <td class="p-3">Gleiciane Rocha Carvalho</td>
+                                    <td class="p-3">29/11/2024 09:59:21</td>
+                                    <td class="p-3">29/11/2024 00:00:00</td>
+                                    <td class="p-3"><span class="bg-green-200 text-green-800 px-2 py-1 rounded-full text-sm">Aprovado</span></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
+        </main>
+    </div>
+
+    <!-- Páginas de Autenticação -->
+    <div id="auth-container">
+        <div id="page-login" class="page active">
+            <div class="min-h-screen flex items-center justify-center bg-slate-800">
+                <div class="bg-white p-8 rounded-lg shadow-xl w-full max-w-md">
+                    <div class="flex justify-center mb-6">
+                         <img src="https://placehold.co/80x80/ffffff/1e293b?text=FSFX" alt="Logo FSFX" class="rounded-full">
+                    </div>
+                    <h2 class="text-2xl font-bold text-center text-gray-800 mb-1">Acesso Estipulante</h2>
+                    <p class="text-center text-gray-500 mb-6">Bem-vindo de volta!</p>
+                    <form id="login-form">
+                        <div class="mb-4">
+                            <label for="cnpj" class="block text-sm font-medium text-gray-700">CNPJ</label>
+                            <input type="text" id="cnpj" value="12.345.678/0001-99" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        <div class="mb-4">
+                            <label for="password" class="block text-sm font-medium text-gray-700">Senha</label>
+                            <input type="password" id="password" value="123456" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        <p id="login-error-msg" class="text-sm text-red-600 mb-4 hidden"></p>
+                        <button type="submit" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">Entrar</button>
+                    </form>
+                    <div class="mt-4 flex items-center justify-between">
+                        <a href="#primeiro-acesso" class="nav-link text-sm text-blue-600 hover:underline">Primeiro Acesso?</a>
+                        <a href="#esqueci-senha" class="nav-link text-sm text-blue-600 hover:underline">Esqueci minha senha</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div id="page-admin-cnpj-selection" class="page">
+            <div class="min-h-screen flex items-center justify-center bg-slate-800">
+                <div class="bg-white p-8 rounded-lg shadow-xl w-full max-w-md text-center">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-4">Acesso Administrativo</h2>
+                    <p class="text-gray-600 mb-6">Digite o CNPJ do estipulante que deseja visualizar.</p>
+                    <form id="admin-select-cnpj-form">
+                        <div class="mb-4">
+                            <input type="text" id="admin-cnpj-input" placeholder="Digite o CNPJ" class="mt-1 text-center block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm" required>
+                        </div>
+                        <button type="submit" class="w-full bg-purple-600 text-white py-2 rounded-md hover:bg-purple-700">Acessar CNPJ</button>
+                    </form>
+                     <a href="#login" class="nav-link block mt-4 text-sm text-blue-600 hover:underline">Voltar para o Login</a>
+                </div>
+            </div>
+        </div>
+
+
+        <div id="page-primeiro-acesso" class="page">
+             <div class="min-h-screen flex items-center justify-center bg-slate-800">
+                <div class="bg-white p-8 rounded-lg shadow-xl w-full max-w-md text-center">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-4">Primeiro Acesso</h2>
+                    <p class="text-gray-600 mb-6">Informe seu CNPJ para receber o código de ativação no e-mail cadastrado.</p>
+                    <div class="mb-4">
+                        <input type="text" placeholder="Digite seu CNPJ" class="mt-1 text-center block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm">
+                    </div>
+                    <button id="send-code-button" class="w-full bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700">Enviar Código</button>
+                    <a href="#login" class="nav-link block mt-4 text-sm text-blue-600 hover:underline">Voltar para o Login</a>
+                </div>
+            </div>
+        </div>
+        
+        <div id="page-codigo-ativacao" class="page">
+             <div class="min-h-screen flex items-center justify-center bg-slate-800">
+                <div class="bg-white p-8 rounded-lg shadow-xl w-full max-w-md text-center">
+                    <i class="fas fa-envelope-open-text text-4xl text-blue-500 mb-4"></i>
+                    <h2 class="text-2xl font-bold text-gray-800 mb-2">Verifique seu E-mail</h2>
+                    <p class="text-gray-600 mb-6">Um código foi enviado para <span class="font-semibold">emp***@exemplo.com.br</span>. Digite o código abaixo para continuar.</p>
+                    <div class="flex justify-center gap-2 mb-4">
+                        <input type="text" maxlength="1" class="w-12 h-12 text-center text-2xl border rounded-md">
+                        <input type="text" maxlength="1" class="w-12 h-12 text-center text-2xl border rounded-md">
+                        <input type="text" maxlength="1" class="w-12 h-12 text-center text-2xl border rounded-md">
+                        <span class="text-2xl font-bold">-</span>
+                        <input type="text" maxlength="1" class="w-12 h-12 text-center text-2xl border rounded-md">
+                        <input type="text" maxlength="1" class="w-12 h-12 text-center text-2xl border rounded-md">
+                        <input type="text" maxlength="1" class="w-12 h-12 text-center text-2xl border rounded-md">
+                    </div>
+                    <button id="validate-code-btn" class="w-full bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700">Validar Código</button>
+                    <p class="text-sm text-gray-500 mt-4">Não recebeu? <a href="#" class="text-blue-500 hover:underline">Reenviar código</a> (válido por 15 min).</p>
+                    <a href="#login" class="nav-link block mt-4 text-sm text-blue-600 hover:underline">Voltar para o Login</a>
+                </div>
+            </div>
+        </div>
+        
+        <div id="page-cadastrar-senha" class="page">
+            <div class="min-h-screen flex items-center justify-center bg-slate-800">
+                <div class="bg-white p-8 rounded-lg shadow-xl w-full max-w-md">
+                    <h2 class="text-2xl font-bold text-center text-gray-800 mb-4">Cadastrar Nova Senha</h2>
+                    <form id="password-form">
+                        <div class="mb-4">
+                            <label for="new-password" class="block text-sm font-medium text-gray-700">Nova Senha</label>
+                            <input type="password" id="new-password" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm" required>
+                        </div>
+                        <div class="mb-4">
+                            <label for="confirm-password" class="block text-sm font-medium text-gray-700">Confirmar Senha</label>
+                            <input type="password" id="confirm-password" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm" required>
+                            <p id="password-match-msg" class="text-sm mt-1"></p>
+                        </div>
+                        <button type="submit" id="save-password-btn" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400" disabled>Salvar Senha</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+
+        <div id="page-esqueci-senha" class="page">
+            <div class="min-h-screen flex items-center justify-center bg-slate-800">
+                <div class="bg-white p-8 rounded-lg shadow-xl w-full max-w-md text-center">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-4">Recuperar Senha</h2>
+                    <p class="text-gray-600 mb-6">Informe seu CNPJ para receber o código de recuperação no e-mail cadastrado.</p>
+                    <div class="mb-4">
+                        <input type="text" placeholder="Digite seu CNPJ" class="mt-1 text-center block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm">
+                    </div>
+                    <button id="send-recovery-code-button" class="w-full bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700">Enviar Código</button>
+                    <a href="#login" class="nav-link block mt-4 text-sm text-blue-600 hover:underline">Voltar para o Login</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal para Ações -->
+    <div id="action-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h3 id="modal-title" class="text-xl font-bold mb-4"></h3>
+            <div id="modal-body"></div>
+            <div class="flex justify-end gap-4 mt-6">
+                <button id="modal-cancel" class="bg-gray-300 text-gray-800 px-6 py-2 rounded-lg hover:bg-gray-400">Cancelar</button>
+                <button id="modal-confirm" class="bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600">Confirmar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Sucesso -->
+    <div id="success-modal" class="modal-overlay">
+        <div class="modal-content text-center">
+            <i class="fas fa-check-circle text-5xl text-green-500 mb-4"></i>
+            <h3 id="success-modal-title" class="text-xl font-bold mb-2">Sucesso!</h3>
+            <p id="success-modal-body"></p>
+            <div class="flex justify-center mt-6">
+                <button id="success-modal-ok" class="bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600">OK</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal de Detalhes do Lote -->
+    <div id="lote-details-modal" class="modal-overlay">
+        <div class="modal-content modal-lg">
+             <div class="flex justify-between items-center mb-4">
+                <h3 id="lote-details-title" class="text-xl font-bold text-gray-800">Detalhes do Lote</h3>
+                <button id="close-lote-details-btn" class="text-2xl text-gray-500 hover:text-gray-800">&times;</button>
+            </div>
+            <div class="overflow-y-auto max-h-[60vh]">
+                 <table class="w-full text-left">
+                    <thead class="bg-gray-200 sticky top-0">
+                        <tr>
+                            <th class="p-3">Beneficiário</th>
+                            <th class="p-3">Tipo</th>
+                            <th class="p-3">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="lote-details-body">
+                        <!-- Detalhes do lote serão injetados aqui -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Modal de Seleção de Contrato -->
+    <div id="contract-selection-modal" class="modal-overlay">
+        <div class="modal-content text-center">
+            <h3 class="text-2xl font-bold mb-6">Selecione um Contrato</h3>
+            <div class="space-y-4">
+                <div class="p-4 border border-green-200 bg-green-50 rounded-lg hover:bg-green-100 cursor-pointer contract-card" data-contract-name="495644 - Produto Médico">
+                    <p class="font-semibold text-lg text-green-800">Contrato 495644</p>
+                    <p class="text-green-700">Produto Médico</p>
+                </div>
+                <div class="p-4 border border-blue-200 bg-blue-50 rounded-lg hover:bg-blue-100 cursor-pointer contract-card" data-contract-name="495645 - Produto Odontológico">
+                    <p class="font-semibold text-lg text-blue-800">Contrato 495645</p>
+                    <p class="text-blue-700">Produto Odontológico</p>
+                </div>
+                 <div class="p-4 border border-yellow-200 bg-yellow-50 rounded-lg hover:bg-yellow-100 cursor-pointer contract-card" data-contract-name="495646 - Produto Aeromédico">
+                    <p class="font-semibold text-lg text-yellow-800">Contrato 495646</p>
+                    <p class="text-yellow-700">Produto Aeromédico</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const navLinks = document.querySelectorAll('.nav-link');
+            const pages = document.querySelectorAll('.page');
+            const pageTitle = document.getElementById('page-title');
+            
+            const appContainer = document.getElementById('app-container');
+            const authContainer = document.getElementById('auth-container');
+            
+            const loginForm = document.getElementById('login-form');
+            const logoutButton = document.getElementById('logout-button');
+
+            const contractSelectionModal = document.getElementById('contract-selection-modal');
+            const contractCards = document.querySelectorAll('.contract-card');
+            const switchContractButton = document.getElementById('switch-contract-button');
+
+            const actionModal = document.getElementById('action-modal');
+            const modalTitle = document.getElementById('modal-title');
+            const modalBody = document.getElementById('modal-body');
+            const modalCancel = document.getElementById('modal-cancel');
+            const modalConfirm = document.getElementById('modal-confirm');
+            
+            const successModal = document.getElementById('success-modal');
+            const successModalBody = document.getElementById('success-modal-body');
+            const successModalOk = document.getElementById('success-modal-ok');
+
+            const sidebar = document.getElementById('sidebar');
+            const mainContent = document.getElementById('main-content');
+            const collapseBtn = document.getElementById('collapse-btn');
+            const collapseIcon = document.getElementById('collapse-icon');
+            
+            const addDependentBtn = document.getElementById('add-dependent-btn');
+            const dependentsContainer = document.getElementById('dependents-container');
+
+            const favoriteBtn = document.getElementById('favorite-btn');
+            let favorites = [];
+            let currentlyEditing = null;
+            let loginAttempts = 0;
+            let isAdmin = false;
+
+            const contractProducts = {
+                '495644': { name: 'Produto Médico', products: ['Produto Médico 1', 'Produto Médico 2', 'Produto Médico 3'] },
+                '495645': { name: 'Produto Odontológico', products: ['Produto Odontológico 1', 'Produto Odontológico 2'] },
+                '495646': { name: 'Produto Aeromédico', products: ['Produto Aeromédico 1'] }
+            };
+            
+            let allBeneficiaries = [
+                { name: 'Ademar Gonçalves de Castro', card: 'U9731511352A00RE', type: 'Titular', status: 'Ativo', titular: '', product: 'Produto Médico 1' },
+                { name: 'Maria de Castro', card: 'U9731511352A01RE', type: 'Dependente', status: 'Ativo', titular: 'Ademar Gonçalves de Castro', product: 'Produto Médico 1' },
+                { name: 'Adriana Sorranto Vieira Silva', card: 'U9731511356600RE', type: 'Titular', status: 'Pendente', titular: '', product: 'Produto Médico 2' },
+                { name: 'Alex Silvério Caetano', card: 'U9731511356200RE', type: 'Titular', status: 'Inativo', titular: '', product: 'Produto Médico 3' },
+                { name: 'Bruno Costa', card: 'U9731511356201RE', type: 'Titular', status: 'Ativo', titular: '', product: 'Produto Médico 1' },
+                { name: 'Carla Costa', card: 'U9731511356202RE', type: 'Dependente', status: 'Ativo', titular: 'Bruno Costa', product: 'Produto Médico 1' },
+                { name: 'Daniel Costa', card: 'U9731511356203RE', type: 'Dependente', status: 'Ativo', titular: 'Bruno Costa', product: 'Produto Médico 1' },
+                { name: 'Fernanda Souza', card: 'U9731511356204RE', type: 'Titular', status: 'Ativo', titular: '', product: 'Produto Médico 2' },
+                { name: 'Gabriel Souza', card: 'U9731511356205RE', type: 'Dependente', status: 'Ativo', titular: 'Fernanda Souza', product: 'Produto Médico 2' },
+                { name: 'Helena Souza', card: 'U9731511356206RE', type: 'Dependente', status: 'Ativo', titular: 'Fernanda Souza', product: 'Produto Médico 2' },
+                { name: 'Igor Souza', card: 'U9731511356207RE', type: 'Dependente', status: 'Inativo', titular: 'Fernanda Souza', product: 'Produto Médico 2' },
+            ];
+
+            let beneficiariesSortColumn = 'name';
+            let beneficiariesSortDirection = 'asc';
+            
+            let demonstrativoSortColumn = 'competencia';
+            let demonstrativoSortDirection = 'desc';
+
+            const demonstrativoData = [
+                 { competencia: 'Julho/2025', vencimento: '10/08/2025', valor: 152480.50, status: 'Em Aberto'},
+                 { competencia: 'Junho/2025', vencimento: '10/07/2025', valor: 151990.00, status: 'Pago'},
+            ];
+
+            function parseDate(dateString) { // "DD/MM/YYYY"
+                if (!dateString) return null;
+                const parts = dateString.split('/');
+                if (parts.length !== 3) return null;
+                const [day, month, year] = parts;
+                return new Date(`${year}-${month}-${day}`);
+            }
+            
+            function sortData(data, column, direction) {
+                 return [...data].sort((a, b) => {
+                    let valA = a[column];
+                    let valB = b[column];
+
+                    if (typeof valA === 'string' && valA.includes('/')) { // Date parsing
+                        valA = parseDate(valA) || 0;
+                        valB = parseDate(valB) || 0;
+                    } else if (typeof valA === 'string') {
+                        valA = valA.toLowerCase();
+                        valB = valB.toLowerCase();
+                    }
+
+                    if (valA < valB) return direction === 'asc' ? -1 : 1;
+                    if (valA > valB) return direction === 'asc' ? 1 : -1;
+                    return 0;
+                });
+            }
+            
+            function updateSortIcons(headerId, sortColumn, sortDirection) {
+                document.querySelectorAll(`#${headerId} .sortable .sort-icon`).forEach(icon => icon.innerHTML = '');
+                const currentHeader = document.querySelector(`#${headerId} .sortable[data-sort="${sortColumn}"] .sort-icon`);
+                if(currentHeader) {
+                    currentHeader.innerHTML = sortDirection === 'asc' ? '<i class="fas fa-sort-up ml-1"></i>' : '<i class="fas fa-sort-down ml-1"></i>';
+                }
+            }
+
+            function renderBeneficiariesTable(beneficiaries) {
+                const tableBody = document.getElementById('beneficiaries-table-body');
+                if (!tableBody) return;
+                
+                const titulares = beneficiaries.filter(b => b.type === 'Titular');
+                const dependentes = beneficiaries.filter(b => b.type === 'Dependente');
+
+                const sortedTitulares = sortData(titulares, beneficiariesSortColumn, beneficiariesSortDirection);
+                
+                let finalSortedList = [];
+                sortedTitulares.forEach(titular => {
+                    finalSortedList.push(titular);
+                    const titularDependentes = dependentes.filter(d => d.titular === titular.name).sort((a,b) => a.name.localeCompare(b.name));
+                    finalSortedList.push(...titularDependentes);
+                });
+
+                tableBody.innerHTML = '';
+                
+                if (finalSortedList.length === 0) {
+                    tableBody.innerHTML = '<tr><td colspan="7" class="text-center p-4">Nenhum beneficiário encontrado.</td></tr>';
+                    return;
+                }
+
+                finalSortedList.forEach(b => {
+                    let statusClass = '';
+                    switch (b.status) {
+                        case 'Ativo': statusClass = 'bg-green-200 text-green-800'; break;
+                        case 'Inativo': statusClass = 'bg-red-200 text-red-800'; break;
+                        case 'Pendente': statusClass = 'bg-gray-200 text-gray-800'; break;
+                    }
+                    
+                    const activeActions = [
+                        { value: 'alterar-dados', text: 'Alterar Dados Cadastrais' },
+                        { value: 'alterar-produto', text: 'Alterar Produto' },
+                        { value: 'rescindir', text: 'Rescindir Contrato' }
+                    ];
+
+                    const pendingActions = [
+                        { value: 'alterar-dados', text: 'Alterar Dados Cadastrais' },
+                        { value: 'alterar-produto', text: 'Alterar Produto' },
+                        { value: 'cancelar-solicitacao', text: 'Cancelar Solicitação' },
+                        { value: 'rescindir', text: 'Rescindir Contrato' }
+                    ].sort((a, b) => a.text.localeCompare(b.text));
+
+                    const inactiveAction = [{ value: 'reativar', text: 'Reativar Contrato' }];
+                    
+                    let actionOptions;
+                    if (b.status === 'Ativo') {
+                        actionOptions = activeActions;
+                    } else if (b.status === 'Pendente') {
+                        actionOptions = pendingActions;
+                    } else { // Inativo
+                        actionOptions = inactiveAction;
+                    }
+
+                    const rowHtml = `
+                        <tr class="border-b">
+                            <td class="p-3">${b.name}</td>
+                            <td class="p-3">${b.card}</td>
+                            <td class="p-3">${b.product}</td>
+                            <td class="p-3">${b.type === 'Titular' ? `<span class="font-semibold">${b.type}</span>` : b.type}</td>
+                            <td class="p-3"><span class="${statusClass} px-2 py-1 rounded-full text-sm">${b.status}</span></td>
+                            <td class="p-3">${b.titular}</td>
+                            <td class="p-3">
+                                <select class="p-2 border rounded-lg action-select" data-beneficiary-card="${b.card}">
+                                    <option value="">Selecione</option>
+                                    ${actionOptions.map(opt => `<option value="${opt.value}">${opt.text}</option>`).join('')}
+                                </select>
+                            </td>
+                        </tr>
+                    `;
+                    tableBody.innerHTML += rowHtml;
+                });
+                updateSortIcons('beneficiaries-table-header', beneficiariesSortColumn, beneficiariesSortDirection);
+            }
+
+            function populateProductFilter() {
+                const filterProductSelect = document.getElementById('filter-product');
+                if (!filterProductSelect) return;
+
+                const headerContractSpan = document.getElementById('header-contrato');
+                const currentContractNumber = headerContractSpan.innerText.split(' ')[0];
+                const products = contractProducts[currentContractNumber]?.products || [];
+
+                filterProductSelect.innerHTML = '<option value="">Todos</option>';
+                products.forEach(p => {
+                    filterProductSelect.innerHTML += `<option value="${p}">${p}</option>`;
+                });
+            }
+
+            function renderProductSelection() {
+                const headerContractSpan = document.getElementById('header-contrato');
+                const currentContractText = headerContractSpan.innerText;
+                const currentContractNumber = currentContractText.split(' ')[0];
+                const container = document.getElementById('product-selection-container');
+                
+                if (!container) return;
+                container.innerHTML = '';
+
+                for (const contractNumber in contractProducts) {
+                    const contractData = contractProducts[contractNumber];
+                    const isCurrent = contractNumber === currentContractNumber;
+                    const requiredAttr = isCurrent ? 'required' : '';
+                    const requiredLabel = isCurrent ? '<span class="text-red-500 ml-1">*</span>' : '';
+
+                    const selectId = `product-select-${contractNumber}`;
+
+                    const comboHtml = `
+                        <div>
+                            <label for="${selectId}" class="block text-sm font-medium text-gray-700">${contractData.name} (Contrato: ${contractNumber})${requiredLabel}</label>
+                            <select id="${selectId}" name="${selectId}" class="mt-1 block w-96 max-w-full p-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" ${requiredAttr}>
+                                <option value="">Selecione um produto</option>
+                                ${contractData.products.map(p => `<option value="${p}">${p}</option>`).join('')}
+                            </select>
+                        </div>
+                    `;
+                    container.innerHTML += comboHtml;
+                }
+            }
+            
+            function renderQuickAccess() {
+                const container = document.getElementById('quick-access-container');
+                if (!container) return;
+                container.innerHTML = '';
+
+                if (favorites.length === 0) {
+                    container.innerHTML = '<p class="text-gray-500">Favorite uma página para vê-la aqui.</p>';
+                    return;
+                }
+
+                favorites.forEach(fav => {
+                    const link = document.createElement('a');
+                    link.href = fav.hash;
+                    link.className = 'nav-link bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors flex items-center';
+                    link.innerHTML = `<i class="fas ${fav.icon} mr-2"></i> ${fav.title}`;
+                    container.appendChild(link);
+                });
+            }
+
+            function updateFavoriteStatus(hash) {
+                const isFavorited = favorites.some(fav => fav.hash === hash);
+                const starIcon = favoriteBtn.querySelector('i');
+                
+                if (isFavorited) {
+                    favoriteBtn.classList.add('favorited');
+                    starIcon.classList.remove('fa-regular');
+                    starIcon.classList.add('fa-solid');
+                } else {
+                    favoriteBtn.classList.remove('favorited');
+                    starIcon.classList.remove('fa-solid');
+                    starIcon.classList.add('fa-regular');
+                }
+                
+                favoriteBtn.style.display = (hash === '#dashboard') ? 'none' : 'block';
+            }
+
+            // Navegação
+            function navigateTo(hash) {
+                if (!hash) hash = '#login';
+
+                // Lógica de autenticação
+                if (hash.startsWith('#login') || hash.startsWith('#primeiro-acesso') || hash.startsWith('#codigo-ativacao') || hash.startsWith('#cadastrar-senha') || hash.startsWith('#esqueci-senha') || hash.startsWith('#admin-cnpj-selection')) {
+                    authContainer.style.display = 'block';
+                    appContainer.style.display = 'none';
+                } else {
+                    authContainer.style.display = 'none';
+                    appContainer.style.display = 'block';
+                }
+
+                pages.forEach(page => {
+                    if ('#' + page.id.replace('page-', '') === hash) {
+                        page.classList.add('active');
+                        
+                        let titleText;
+                        if (hash === '#dashboard') {
+                            titleText = 'Página Inicial';
+                        } else {
+                             const navLink = document.querySelector(`.nav-link[href="${hash}"]`);
+                             if (navLink) {
+                                const navTextSpan = navLink.querySelector('.nav-text');
+                                if (navTextSpan) {
+                                    titleText = navTextSpan.textContent;
+                                }
+                             } else if (hash === '#beneficiarios-edicao') {
+                                titleText = 'Edição de Beneficiário';
+                             } else {
+                                titleText = 'Página';
+                             }
+                        }
+                        pageTitle.innerText = titleText;
+
+                        if (hash === '#beneficiarios-inclusao') {
+                            renderProductSelection();
+                        }
+                        if (hash === '#beneficiarios-consulta') {
+                            populateProductFilter();
+                            renderBeneficiariesTable(allBeneficiaries);
+                        }
+                        if (hash === '#dashboard') {
+                            renderQuickAccess();
+                        }
+                        if (hash === '#beneficiarios-lote') {
+                            renderLoteHistory(loteHistoryData);
+                        }
+                         if (hash === '#mensalidade-demonstrativo') {
+                            renderDemonstrativoTable(demonstrativoData);
+                        }
+                        
+                        updateFavoriteStatus(hash);
+
+                    } else {
+                        page.classList.remove('active');
+                    }
+                });
+                window.location.hash = hash;
+            }
+
+            document.addEventListener('click', function(e) {
+                const navLink = e.target.closest('.nav-link');
+                if (navLink) {
+                    e.preventDefault();
+                    const targetHash = navLink.getAttribute('href');
+                    navigateTo(targetHash);
+                }
+            });
+
+
+            // Login
+            loginForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                const cnpjInput = document.getElementById('cnpj');
+                const passwordInput = document.getElementById('password');
+                const loginErrorMsg = document.getElementById('login-error-msg');
+
+                loginErrorMsg.classList.add('hidden');
+                
+                if (cnpjInput.value.toUpperCase() === 'ADMIN') {
+                     if (passwordInput.value === '123456') { // Senha do admin
+                        loginAttempts = 0;
+                        navigateTo('#admin-cnpj-selection');
+                    } else {
+                        loginErrorMsg.textContent = `Senha de administrador incorreta.`;
+                        loginErrorMsg.classList.remove('hidden');
+                    }
+                    return;
+                }
+
+
+                if (passwordInput.value !== '123456') { // Simula senha incorreta
+                    loginAttempts++;
+                    if (loginAttempts >= 5) {
+                        modalTitle.innerText = 'Utilizador Bloqueado';
+                        modalBody.innerHTML = `<p>O seu utilizador foi bloqueado por excesso de tentativas. Por favor, utilize a opção "Esqueci minha senha" ou contacte um administrador para desbloquear o seu acesso.</p>`;
+                        modalConfirm.textContent = 'Recuperar Senha';
+                        modalConfirm.onclick = () => {
+                            actionModal.style.display = 'none';
+                            navigateTo('#esqueci-senha');
+                        };
+                        actionModal.style.display = 'flex';
+                    } else {
+                        loginErrorMsg.textContent = `Senha incorreta. Tentativa ${loginAttempts} de 5.`;
+                        loginErrorMsg.classList.remove('hidden');
+                    }
+                } else {
+                    loginAttempts = 0;
+                    contractSelectionModal.style.display = 'flex';
+                }
+            });
+            
+            const adminSelectCnpjForm = document.getElementById('admin-select-cnpj-form');
+            if(adminSelectCnpjForm) {
+                adminSelectCnpjForm.addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    const cnpj = document.getElementById('admin-cnpj-input').value;
+                    if(cnpj) {
+                        // Simula a busca e login no CNPJ
+                        document.getElementById('impersonated-cnpj').textContent = cnpj;
+                        document.getElementById('header-cnpj-display').textContent = `CNPJ: ${cnpj}`;
+                        document.getElementById('admin-banner').classList.remove('hidden');
+                        document.getElementById('change-cnpj-btn').classList.remove('hidden');
+                        contractSelectionModal.style.display = 'flex';
+                    }
+                });
+            }
+            
+            const changeCnpjBtn = document.getElementById('change-cnpj-btn');
+            if(changeCnpjBtn) {
+                changeCnpjBtn.addEventListener('click', () => {
+                    navigateTo('#admin-cnpj-selection');
+                });
+            }
+
+            // Logout
+            logoutButton.addEventListener('click', function(e) {
+                e.preventDefault();
+                loginAttempts = 0;
+                navigateTo('#login');
+            });
+
+            // Botão para trocar de contrato no header
+            switchContractButton.addEventListener('click', function() {
+                contractSelectionModal.style.display = 'flex';
+            });
+
+            // Seleção de Contrato
+            contractCards.forEach(card => {
+                card.addEventListener('click', function() {
+                    const contractName = this.dataset.contractName;
+                    document.getElementById('header-contrato').innerText = contractName;
+                    contractSelectionModal.style.display = 'none';
+                    navigateTo('#dashboard');
+                });
+            });
+
+            // Primeiro Acesso
+            document.getElementById('send-code-button')?.addEventListener('click', () => {
+                navigateTo('#codigo-ativacao');
+            });
+            
+            // Esqueci a Senha
+            document.getElementById('send-recovery-code-button')?.addEventListener('click', () => {
+                navigateTo('#codigo-ativacao');
+            });
+
+            // Validar Código de Ativação
+            document.getElementById('validate-code-btn')?.addEventListener('click', () => {
+                navigateTo('#cadastrar-senha');
+            });
+
+            // Lógica de Cadastro de Senha
+            const passwordForm = document.getElementById('password-form');
+            const newPassword = document.getElementById('new-password');
+            const confirmPassword = document.getElementById('confirm-password');
+            const passwordMatchMsg = document.getElementById('password-match-msg');
+            const savePasswordBtn = document.getElementById('save-password-btn');
+
+            function validatePasswords() {
+                const pass1 = newPassword.value;
+                const pass2 = confirmPassword.value;
+
+                if (pass1.length > 0 && pass1.length < 6) {
+                    passwordMatchMsg.textContent = 'A senha deve ter no mínimo 6 caracteres.';
+                    passwordMatchMsg.className = 'text-sm mt-1 text-red-600';
+                    savePasswordBtn.disabled = true;
+                    return;
+                }
+
+                if (pass2.length >= pass1.length && pass1.length >= 6) {
+                    if (pass1 === pass2) {
+                        passwordMatchMsg.textContent = 'As senhas coincidem.';
+                        passwordMatchMsg.className = 'text-sm mt-1 text-green-600';
+                        savePasswordBtn.disabled = false;
+                    } else {
+                        passwordMatchMsg.textContent = 'As senhas não coincidem.';
+                        passwordMatchMsg.className = 'text-sm mt-1 text-red-600';
+                        savePasswordBtn.disabled = true;
+                    }
+                } else {
+                    passwordMatchMsg.textContent = '';
+                    savePasswordBtn.disabled = true;
+                }
+            }
+
+            if(newPassword && confirmPassword) {
+                newPassword.addEventListener('input', validatePasswords);
+                confirmPassword.addEventListener('input', validatePasswords);
+            }
+
+            if(passwordForm) {
+                passwordForm.addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    alert('Senha cadastrada com sucesso! (simulação)');
+                    contractSelectionModal.style.display = 'flex';
+                });
+            }
+
+
+            // Accordion do Menu
+            document.querySelectorAll('.accordion-toggle').forEach(button => {
+                button.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    if(sidebar.classList.contains('collapsed')) return;
+                    const submenu = this.nextElementSibling;
+                    submenu.classList.toggle('hidden');
+                    this.querySelector('.fa-chevron-down').classList.toggle('rotate-180');
+                });
+            });
+
+            // Collapse Sidebar
+            collapseBtn.addEventListener('click', () => {
+                sidebar.classList.toggle('collapsed');
+                mainContent.classList.toggle('collapsed');
+                collapseIcon.classList.toggle('fa-chevron-left');
+                collapseIcon.classList.toggle('fa-chevron-right');
+            });
+
+            // Adicionar Dependente
+            if(addDependentBtn) {
+                addDependentBtn.addEventListener('click', () => {
+                    const dependentId = Date.now();
+                    const dependentFormHtml = `
+                        <div class="dependent-form border p-4 rounded-lg bg-gray-50 relative animate-fade-in" id="dependent-${dependentId}">
+                             <div class="flex justify-between items-center mb-4">
+                                <h5 class="font-semibold text-gray-600">Dados do Dependente</h5>
+                                <button type="button" title="Remover Dependente" class="text-red-500 hover:text-red-700 font-semibold text-sm remove-dependent-btn flex items-center">
+                                    <i class="fas fa-trash-alt mr-1"></i>Remover
+                                </button>
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <input type="text" placeholder="Nome Completo" class="p-2 border rounded-lg col-span-2 dependent-name" required>
+                                <input type="date" placeholder="Data de Nascimento" class="p-2 border rounded-lg">
+                                <input type="text" placeholder="CPF" class="p-2 border rounded-lg">
+                                <select class="p-2 border rounded-lg">
+                                    <option value="" disabled selected>Grau de Parentesco</option>
+                                    <option value="conjuge">Cônjuge</option>
+                                    <option value="filho">Filho(a)</option>
+                                    <option value="enteado">Enteado(a)</option>
+                                    <option value="outro">Outro</option>
+                                </select>
+                                <input type="text" placeholder="Nome da Mãe" class="p-2 border rounded-lg col-span-2">
+                            </div>
+                        </div>
+                    `;
+                    dependentsContainer.insertAdjacentHTML('beforeend', dependentFormHtml);
+                });
+            }
+            
+            // Remover Dependente (com event delegation)
+            if(dependentsContainer) {
+                dependentsContainer.addEventListener('click', function(e) {
+                    if (e.target.closest('.remove-dependent-btn')) {
+                        e.target.closest('.dependent-form').remove();
+                    }
+                });
+            }
+
+
+            // Modal de Ações
+            document.addEventListener('change', function(e) {
+                if (e.target && e.target.classList.contains('action-select')) {
+                    const select = e.target;
+                    const action = select.value;
+                    const beneficiaryCard = select.dataset.beneficiaryCard;
+                    const beneficiary = allBeneficiaries.find(b => b.card === beneficiaryCard);
+
+                    if (!action || action === "Selecione" || !beneficiary) return;
+
+                    if (action === 'alterar-dados') {
+                         currentlyEditing = beneficiary;
+                         document.getElementById('edit-name').value = beneficiary.name;
+                         // Preencher outros campos se necessário
+                         navigateTo('#beneficiarios-edicao');
+                    } else {
+                        let title = '';
+                        let body = '';
+                        switch(action) {
+                            case 'rescindir':
+                                title = `Rescindir Contrato de ${beneficiary.name}`;
+                                body = `<p>Você confirma a solicitação de rescisão para este beneficiário?</p>`;
+                                break;
+                            case 'reativar':
+                                title = `Reativar Contrato de ${beneficiary.name}`;
+                                body = `<p>Você confirma a solicitação de reativação para este beneficiário?</p>`;
+                                break;
+                            case 'cancelar-solicitacao':
+                                title = `Cancelar Solicitação de ${beneficiary.name}`;
+                                body = `<p>Você confirma o cancelamento da solicitação para este beneficiário?</p>`;
+                                break;
+                        }
+                        modalTitle.innerText = title;
+                        modalBody.innerHTML = body;
+                        actionModal.style.display = 'flex';
+                    }
+                    
+                    select.value = '';
+                }
+            });
+
+            modalCancel.addEventListener('click', () => actionModal.style.display = 'none');
+            modalConfirm.addEventListener('click', () => {
+                alert('Ação confirmada (simulação).');
+                actionModal.style.display = 'none';
+            });
+            
+            // Salvar Alterações
+            const saveChangesBtn = document.getElementById('save-changes-btn');
+            if (saveChangesBtn) {
+                saveChangesBtn.addEventListener('click', () => {
+                    if (currentlyEditing) {
+                        const beneficiaryIndex = allBeneficiaries.findIndex(b => b.card === currentlyEditing.card);
+                        if (beneficiaryIndex > -1) {
+                            allBeneficiaries[beneficiaryIndex].status = 'Pendente';
+                            allBeneficiaries[beneficiaryIndex].name = document.getElementById('edit-name').value;
+                        }
+                        currentlyEditing = null;
+                        navigateTo('#beneficiarios-consulta');
+                    }
+                });
+            }
+
+            // Lógica de Filtro
+            const consultarBtn = document.getElementById('filter-consultar-btn');
+            const limparBtn = document.getElementById('filter-limpar-btn');
+            const filterName = document.getElementById('filter-name');
+            const filterProduct = document.getElementById('filter-product');
+            const filterStatus = document.getElementById('filter-status');
+
+            if(consultarBtn) {
+                consultarBtn.addEventListener('click', () => {
+                    const nameValue = filterName.value.toLowerCase();
+                    const productValue = filterProduct.value;
+                    const statusValue = filterStatus.value;
+
+                    const filtered = allBeneficiaries.filter(b => {
+                        const nameMatch = b.name.toLowerCase().includes(nameValue);
+                        const productMatch = !productValue || b.product === productValue;
+                        const statusMatch = !statusValue || b.status === statusValue;
+                        return nameMatch && productMatch && statusMatch;
+                    });
+                    renderBeneficiariesTable(filtered);
+                });
+            }
+
+            if(limparBtn) {
+                limparBtn.addEventListener('click', () => {
+                    filterName.value = '';
+                    filterProduct.value = '';
+                    filterStatus.value = '';
+                    renderBeneficiariesTable(allBeneficiaries);
+                });
+            }
+
+            // Lógica de Favoritos
+            favoriteBtn.addEventListener('click', () => {
+                const hash = window.location.hash;
+                const isFavorited = favorites.some(fav => fav.hash === hash);
+                
+                if (isFavorited) {
+                    favorites = favorites.filter(fav => fav.hash !== hash);
+                } else {
+                    const navLink = document.querySelector(`.nav-link[href="${hash}"]`);
+                    if (navLink) {
+                        const title = navLink.querySelector('.nav-text').textContent;
+                        const icon = navLink.dataset.icon;
+                        favorites.push({ hash, title, icon });
+                    }
+                }
+                updateFavoriteStatus(hash);
+                renderQuickAccess();
+            });
+
+            // Lógica de Inclusão
+            const inclusionForm = document.getElementById('inclusion-form');
+            if (inclusionForm) {
+                inclusionForm.addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    const newName = document.getElementById('inclusion-name').value;
+                    if (!newName) return;
+
+                    const newBeneficiary = {
+                        name: newName,
+                        card: `U${Math.floor(Math.random() * 9000000000000) + 1000000000000}RE`,
+                        type: 'Titular',
+                        status: 'Pendente',
+                        titular: '',
+                        product: 'Produto Médico 1' // Simulação
+                    };
+                    
+                    const newDependents = [];
+                    document.querySelectorAll('.dependent-form').forEach(form => {
+                        const dependentNameInput = form.querySelector('.dependent-name');
+                        if(dependentNameInput && dependentNameInput.value) {
+                            newDependents.push({
+                                name: dependentNameInput.value,
+                                card: `U${Math.floor(Math.random() * 9000000000000) + 1000000000000}RE`,
+                                type: 'Dependente',
+                                status: 'Pendente',
+                                titular: newName,
+                                product: 'Produto Médico 1' // Simulação
+                            });
+                        }
+                    });
+
+                    allBeneficiaries.unshift(newBeneficiary, ...newDependents);
+
+                    successModalBody.textContent = 'Registro incluído com sucesso! Aguardando aprovação.';
+                    successModal.style.display = 'flex';
+                    
+                    inclusionForm.reset();
+                    dependentsContainer.innerHTML = '';
+                });
+            }
+
+            if (successModalOk) {
+                successModalOk.addEventListener('click', () => {
+                    successModal.style.display = 'none';
+                    navigateTo('#beneficiarios-consulta');
+                });
+            }
+            
+            // Lógica de Movimentação por Lote
+            const loteDetailsModal = document.getElementById('lote-details-modal');
+            const closeLoteDetailsBtn = document.getElementById('close-lote-details-btn');
+            const loteHistoryBody = document.getElementById('lote-history-body');
+            const loteDetailsBody = document.getElementById('lote-details-body');
+            const loteDetailsTitle = document.getElementById('lote-details-title');
+            
+            const loteHistoryData = [
+                { id: 1, file: 'inclusoes_julho.xlsx', importDate: '20/07/2025', status: 'Aprovado', statusDate: '21/07/2025', details: [
+                    { name: 'Carlos Pereira', type: 'Inclusão', status: 'Aprovado' },
+                    { name: 'Ana Pereira', type: 'Inclusão', status: 'Aprovado' },
+                ]},
+                { id: 2, file: 'mov_agosto_1.xlsx', importDate: '01/08/2025', status: 'Rejeitado', statusDate: '02/08/2025', details: [
+                    { name: 'Juliana Costa', type: 'Alteração', status: 'Rejeitado' },
+                ]},
+                { id: 3, file: 'mov_agosto_2.xlsx', importDate: '03/08/2025', status: 'Pendente', statusDate: '', details: [
+                    { name: 'Marcos Andrade', type: 'Inclusão', status: 'Pendente' },
+                    { name: 'Fernanda Lima', type: 'Exclusão', status: 'Pendente' },
+                ]}
+            ];
+            
+            let loteSortColumn = 'importDate';
+            let loteSortDirection = 'desc';
+
+            function renderLoteHistory(data) {
+                if (!loteHistoryBody) return;
+                const sortedData = sortData(data, loteSortColumn, loteSortDirection);
+                loteHistoryBody.innerHTML = '';
+                sortedData.forEach(lote => {
+                     let statusClass = '';
+                    switch (lote.status) {
+                        case 'Aprovado': statusClass = 'bg-green-200 text-green-800'; break;
+                        case 'Rejeitado': statusClass = 'bg-red-200 text-red-800'; break;
+                        case 'Pendente': statusClass = 'bg-gray-200 text-gray-800'; break;
+                    }
+                    const row = `
+                        <tr class="border-b">
+                            <td class="p-3">${lote.file}</td>
+                            <td class="p-3">${lote.importDate}</td>
+                            <td class="p-3"><span class="${statusClass} px-2 py-1 rounded-full text-sm">${lote.status}</span></td>
+                            <td class="p-3">${lote.statusDate}</td>
+                            <td class="p-3">
+                                <button class="bg-blue-500 text-white px-3 py-1 rounded-lg text-sm hover:bg-blue-600 view-lote-details" data-lote-id="${lote.id}">Detalhar</button>
+                            </td>
+                        </tr>
+                    `;
+                    loteHistoryBody.innerHTML += row;
+                });
+                updateSortIcons('lote-history-header', loteSortColumn, loteSortDirection);
+            }
+            
+            document.addEventListener('click', (e) => {
+                if(e.target.classList.contains('view-lote-details')) {
+                    const loteId = parseInt(e.target.dataset.loteId);
+                    const loteData = loteHistoryData.find(l => l.id === loteId);
+                    if (loteData) {
+                        loteDetailsTitle.textContent = `Detalhes do Lote: ${loteData.file}`;
+                        loteDetailsBody.innerHTML = '';
+                        loteData.details.forEach(detail => {
+                             let statusClass = '';
+                            switch (detail.status) {
+                                case 'Aprovado': statusClass = 'bg-green-200 text-green-800'; break;
+                                case 'Rejeitado': statusClass = 'bg-red-200 text-red-800'; break;
+                                case 'Pendente': statusClass = 'bg-gray-200 text-gray-800'; break;
+                            }
+                            const detailRow = `
+                                <tr class="border-b">
+                                    <td class="p-3">${detail.name}</td>
+                                    <td class="p-3">${detail.type}</td>
+                                    <td class="p-3"><span class="${statusClass} px-2 py-1 rounded-full text-sm">${detail.status}</span></td>
+                                </tr>
+                            `;
+                            loteDetailsBody.innerHTML += detailRow;
+                        });
+                        loteDetailsModal.style.display = 'flex';
+                    }
+                }
+            });
+            
+            if(closeLoteDetailsBtn) {
+                closeLoteDetailsBtn.addEventListener('click', () => {
+                    loteDetailsModal.style.display = 'none';
+                });
+            }
+            
+            // Lógica de Ordenação Genérica
+            document.addEventListener('click', (e) => {
+                const th = e.target.closest('.sortable');
+                if (!th) return;
+                const table = th.closest('table');
+                const thead = table.querySelector('thead');
+                const newSortColumn = th.dataset.sort;
+
+                if (thead.id === 'beneficiaries-table-header') {
+                    if (beneficiariesSortColumn === newSortColumn) {
+                        beneficiariesSortDirection = beneficiariesSortDirection === 'asc' ? 'desc' : 'asc';
+                    } else {
+                        beneficiariesSortColumn = newSortColumn;
+                        beneficiariesSortDirection = 'asc';
+                    }
+                    renderBeneficiariesTable(allBeneficiaries);
+                } else if (thead.id === 'lote-history-header') {
+                     if (loteSortColumn === newSortColumn) {
+                        loteSortDirection = loteSortDirection === 'asc' ? 'desc' : 'asc';
+                    } else {
+                        loteSortColumn = newSortColumn;
+                        loteSortDirection = 'asc';
+                    }
+                    renderLoteHistory(loteHistoryData);
+                } else if (thead.id === 'demonstrativo-header') {
+                     if (demonstrativoSortColumn === newSortColumn) {
+                        demonstrativoSortDirection = demonstrativoSortDirection === 'asc' ? 'desc' : 'asc';
+                    } else {
+                        demonstrativoSortColumn = newSortColumn;
+                        demonstrativoSortDirection = 'asc';
+                    }
+                    renderDemonstrativoTable(demonstrativoData);
+                }
+            });
+            
+            function renderDemonstrativoTable(data) {
+                const tableBody = document.getElementById('demonstrativo-body');
+                if(!tableBody) return;
+
+                const sortedData = sortData(data, demonstrativoSortColumn, demonstrativoSortDirection);
+                tableBody.innerHTML = '';
+
+                sortedData.forEach(item => {
+                    let statusClass = item.status === 'Pago' ? 'bg-green-200 text-green-800' : 'bg-yellow-200 text-yellow-800';
+                    const row = `
+                         <tr class="border-b">
+                            <td class="p-3">${item.competencia}</td>
+                            <td class="p-3">${item.vencimento}</td>
+                            <td class="p-3">R$ ${item.valor.toFixed(2).replace('.',',')}</td>
+                            <td class="p-3"><span class="${statusClass} px-2 py-1 rounded-full text-sm">${item.status}</span></td>
+                            <td class="p-3 space-x-2">
+                                <button class="bg-blue-500 text-white px-3 py-1 rounded-lg text-sm hover:bg-blue-600" ${item.status === 'Pago' ? 'disabled' : ''}><i class="fas fa-barcode mr-1"></i> Boleto</button>
+                                <button class="bg-gray-500 text-white px-3 py-1 rounded-lg text-sm hover:bg-gray-600"><i class="fas fa-file-alt mr-1"></i> Nota Fiscal</button>
+                                <a href="#mensalidade-detalhamento" class="nav-link inline-block bg-gray-200 text-gray-700 px-3 py-1 rounded-lg text-sm hover:bg-gray-300"><i class="fas fa-search-dollar mr-1"></i> Detalhar</a>
+                            </td>
+                        </tr>
+                    `;
+                    tableBody.innerHTML += row;
+                });
+                updateSortIcons('demonstrativo-header', demonstrativoSortColumn, demonstrativoSortDirection);
+            }
+
+
+            // Navegação inicial baseada no hash
+            navigateTo(window.location.hash || '#login');
+        });
+    </script>
+
+</body>
+</html>
